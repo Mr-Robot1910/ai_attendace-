@@ -1,0 +1,351 @@
+{% extends 'base.html' %}
+{% set active_page = 'students' %}
+
+{% block title %}Students{% endblock %}
+{% block topbar_title %}Student Management{% endblock %}
+{% block topbar_sub %}View, edit and manage registered students{% endblock %}
+
+{% block content %}
+
+<!-- Stats Mini Bar -->
+<div class="stats-grid" style="margin-bottom:20px;">
+    <div class="stat-card blue">
+        <div class="stat-card-header"><div class="stat-icon blue">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div></div>
+        <div class="stat-value">{{ students|length }}</div>
+        <div class="stat-label">Total Students</div>
+    </div>
+    <div class="stat-card green">
+        <div class="stat-card-header"><div class="stat-icon green">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div></div>
+        <div class="stat-value">{{ students|selectattr('percentage', 'ge', 75)|list|length }}</div>
+        <div class="stat-label">Good Standing (≥75%)</div>
+    </div>
+    <div class="stat-card red">
+        <div class="stat-card-header"><div class="stat-icon red">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div></div>
+        <div class="stat-value">{{ students|selectattr('percentage', 'lt', 75)|list|length }}</div>
+        <div class="stat-label">At Risk (&lt;75%)</div>
+    </div>
+    <div class="stat-card orange">
+        <div class="stat-card-header"><div class="stat-icon orange">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div></div>
+        <div class="stat-value">{{ students|sum(attribute='days_present') }}</div>
+        <div class="stat-label">Total Attendances</div>
+    </div>
+</div>
+
+<!-- Search + Add -->
+<div class="card" style="margin-bottom:20px;">
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;position:relative;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--text-muted);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="searchInput" class="form-input" placeholder="Search by name or roll number…" style="padding-left:38px;">
+        </div>
+        <select id="filterStatus" class="form-select" style="min-width:160px;flex:0 0 auto;">
+            <option value="all">All Students</option>
+            <option value="good">Good Standing (≥75%)</option>
+            <option value="risk">At Risk (&lt;75%)</option>
+        </select>
+        <a href="/register" class="btn btn-primary" style="white-space:nowrap;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+            Register New
+        </a>
+    </div>
+</div>
+
+<!-- Student Cards Grid -->
+<div id="studentGrid" class="student-grid">
+    {% if students %}
+        {% for s in students %}
+        <div class="student-card"
+             data-name="{{ s.name|lower }}"
+             data-roll="{{ s.roll_no|lower }}"
+             data-pct="{{ s.percentage }}">
+            <div class="student-card-header">
+                <img src="https://api.dicebear.com/7.x/shapes/svg?seed={{ s.name }}&backgroundColor=0a0b14,020205" alt="{{ s.name }} avatar" class="student-avatar">
+                <div class="student-status-dot {{ 'dot-green' if s.percentage >= 75 else 'dot-red' }}"></div>
+            </div>
+            <div class="student-card-body">
+                <div class="student-name">{{ s.name }}</div>
+                <div class="student-roll">Roll: {{ s.roll_no }}</div>
+                {% if s.email %}
+                <div class="student-email">{{ s.email }}</div>
+                {% endif %}
+                <!-- Attendance Bar -->
+                {% set bar_color = 'var(--green)' if s.percentage >= 75 else ('var(--orange)' if s.percentage >= 50 else 'var(--red)') %}
+                <div class="student-attendance-bar" style="--bar-width: {{ s.percentage }}%; --bar-color: {{ bar_color }};">
+                    <div class="student-attendance-fill" style="width: var(--bar-width); background: var(--bar-color);"></div>
+                </div>
+                <div class="student-pct-row">
+                    <span class="badge {{ 'badge-green' if s.percentage >= 75 else ('badge-orange' if s.percentage >= 50 else 'badge-red') }}">{{ s.percentage }}%</span>
+                    <span style="font-size:12px;color:var(--text-muted);">{{ s.days_present }} days</span>
+                    <span style="font-size:12px;color:var(--text-muted);">Last: {{ s.last_seen }}</span>
+                </div>
+            </div>
+            <div class="student-card-actions">
+                <button type="button" class="btn btn-outline btn-sm action-edit" 
+                        data-id="{{ s.id }}" data-name="{{ s.name }}" data-roll="{{ s.roll_no }}" data-email="{{ s.email }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    Edit
+                </button>
+                <button type="button" class="btn btn-outline btn-sm action-history" 
+                        data-id="{{ s.id }}" data-name="{{ s.name }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    History
+                </button>
+                <button type="button" class="btn-delete action-delete" 
+                        data-id="{{ s.id }}" data-name="{{ s.name }}" style="padding:7px 12px;font-size:12px;border-radius:8px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M9 6V4h6v2"/></svg>
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+    <div class="empty-state" style="grid-column:1/-1;">
+        <div class="empty-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        </div>
+        <p>No students registered yet.<br><a href="/register" style="color:var(--cyan)">Register the first student</a></p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- No results message -->
+<div id="noResults" class="empty-state" style="display:none;margin-top:20px;">
+    <div class="empty-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </div>
+    <p>No students match your search.</p>
+</div>
+
+<!-- ── Edit Modal ───────────────────────────────────────────────────── -->
+<div id="editModal" class="modal-backdrop" style="display:none;" onclick="closeEditModal(event)">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div class="modal-title">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Edit Student
+            </div>
+            <button class="modal-close" onclick="document.getElementById('editModal').style.display='none'">✕</button>
+        </div>
+        <input type="hidden" id="editStudentId">
+        <div class="form-group">
+            <label class="form-label" for="editName">Full Name</label>
+            <input type="text" id="editName" class="form-input" placeholder="Student full name">
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="editRoll">Roll Number</label>
+            <input type="text" id="editRoll" class="form-input" placeholder="e.g. CS2021001">
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="editEmail">Email (optional)</label>
+            <input type="email" id="editEmail" class="form-input" placeholder="student@email.com">
+        </div>
+
+        <!-- Manual Attendance Override -->
+        <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--glass-border);">
+            <div class="form-label" style="margin-bottom:12px;color:var(--text-secondary);">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;display:inline;vertical-align:middle;margin-right:4px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                Manual Attendance Override
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+                <div class="form-group" style="flex:1;min-width:140px;margin-bottom:0;">
+                    <input type="date" id="overrideDate" class="form-input">
+                </div>
+                <button class="btn btn-success btn-sm" onclick="manualMark('add')">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><polyline points="20 6 9 17 4 12"/></svg>
+                    Mark Present
+                </button>
+                <button class="btn btn-sm" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#f87171;" onclick="manualMark('remove')">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    Remove
+                </button>
+            </div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:28px;">
+            <button class="btn btn-outline" style="flex:1;justify-content:center;" onclick="document.getElementById('editModal').style.display='none'">Cancel</button>
+            <button class="btn btn-primary" style="flex:2;justify-content:center;" id="saveEditBtn" onclick="saveEdit()">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── History Modal ────────────────────────────────────────────────── -->
+<div id="historyModal" class="modal-backdrop" style="display:none;" onclick="closeHistoryModal(event)">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div class="modal-title">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span id="historyModalTitle">Attendance History</span>
+            </div>
+            <button class="modal-close" onclick="document.getElementById('historyModal').style.display='none'">✕</button>
+        </div>
+        <div id="historyContent" style="max-height:360px;overflow-y:auto;">
+            <div style="text-align:center;padding:32px;color:var(--text-muted);">Loading…</div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Search + Filter ──────────────────────────────────────────────────────────
+const searchInput  = document.getElementById('searchInput');
+const filterStatus = document.getElementById('filterStatus');
+const cards        = document.querySelectorAll('.student-card');
+const noResults    = document.getElementById('noResults');
+
+function filterCards() {
+    const q   = searchInput.value.toLowerCase();
+    const st  = filterStatus.value;
+    let visible = 0;
+    cards.forEach(c => {
+        const name = c.dataset.name || '';
+        const roll = c.dataset.roll || '';
+        const pct  = parseFloat(c.dataset.pct || 0);
+        const matchQ = name.includes(q) || roll.includes(q);
+        const matchS = st === 'all' || (st === 'good' && pct >= 75) || (st === 'risk' && pct < 75);
+        const show = matchQ && matchS;
+        c.style.display = show ? '' : 'none';
+        if (show) visible++;
+    });
+    noResults.style.display = (visible === 0 && cards.length > 0) ? 'block' : 'none';
+}
+
+searchInput.addEventListener('input', filterCards);
+filterStatus.addEventListener('change', filterCards);
+
+// ── Event Delegation for Student Cards ───────────────────────────────────────
+document.getElementById('studentGrid').addEventListener('click', (e) => {
+    const btnEdit = e.target.closest('.action-edit');
+    if (btnEdit) {
+        openEditModal(btnEdit.dataset.id, btnEdit.dataset.name, btnEdit.dataset.roll, btnEdit.dataset.email);
+        return;
+    }
+    
+    const btnHistory = e.target.closest('.action-history');
+    if (btnHistory) {
+        openHistoryModal(btnHistory.dataset.id, btnHistory.dataset.name);
+        return;
+    }
+    
+    const btnDelete = e.target.closest('.action-delete');
+    if (btnDelete) {
+        deleteStudent(btnDelete.dataset.id, btnDelete.dataset.name);
+        return;
+    }
+});
+
+// ── Edit Modal ───────────────────────────────────────────────────────────────
+function openEditModal(id, name, roll, email) {
+    document.getElementById('editStudentId').value = id;
+    document.getElementById('editName').value  = name;
+    document.getElementById('editRoll').value  = roll;
+    document.getElementById('editEmail').value = email;
+    // Set override date to today
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('overrideDate').value = today;
+    document.getElementById('editModal').style.display = 'flex';
+}
+function closeEditModal(e) {
+    if (e.target === document.getElementById('editModal'))
+        document.getElementById('editModal').style.display = 'none';
+}
+async function saveEdit() {
+    const id      = document.getElementById('editStudentId').value;
+    const name    = document.getElementById('editName').value.trim();
+    const roll_no = document.getElementById('editRoll').value.trim();
+    const email   = document.getElementById('editEmail').value.trim();
+    if (!name || !roll_no) { showToast('Name and roll number are required.', 'error'); return; }
+    const btn = document.getElementById('saveEditBtn');
+    const orig = btn.innerHTML;
+    btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Saving…';
+    try {
+        const r = await fetch(`/api/students/${id}`, {
+            method: 'PATCH',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name, roll_no, email})
+        });
+        const d = await r.json();
+        if (d.success) {
+            showToast('Student updated successfully!', 'success');
+            document.getElementById('editModal').style.display = 'none';
+            setTimeout(() => location.reload(), 800);
+        } else {
+            showToast(d.error || 'Update failed.', 'error');
+            btn.disabled = false; btn.innerHTML = orig;
+        }
+    } catch { showToast('Network error.', 'error'); btn.disabled = false; btn.innerHTML = orig; }
+}
+
+// ── Manual Attendance Override ────────────────────────────────────────────────
+async function manualMark(action) {
+    const id   = document.getElementById('editStudentId').value;
+    const date = document.getElementById('overrideDate').value;
+    if (!date) { showToast('Please select a date.', 'error'); return; }
+    const r = await fetch('/api/attendance/manual', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({student_id: parseInt(id), date, action})
+    });
+    const d = await r.json();
+    if (d.success) {
+        const msg = action === 'add' ? 'Marked Present ✓' : 'Attendance removed.';
+        showToast(msg, action === 'add' ? 'success' : 'info');
+    } else {
+        showToast(d.error || 'Action failed.', 'error');
+    }
+}
+
+// ── Attendance History Modal ─────────────────────────────────────────────────
+async function openHistoryModal(id, name) {
+    document.getElementById('historyModalTitle').textContent = `${name} — History`;
+    document.getElementById('historyContent').innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-muted);">Loading…</div>';
+    document.getElementById('historyModal').style.display = 'flex';
+    try {
+        const r = await fetch(`/api/students/${id}/history`);
+        const history = await r.json();
+        if (!history.length) {
+            document.getElementById('historyContent').innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-muted);">No attendance records found.</div>';
+            return;
+        }
+        document.getElementById('historyContent').innerHTML = `
+            <table style="width:100%;border-collapse:collapse;">
+                <thead><tr>
+                    <th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.07em;border-bottom:1px solid var(--glass-border);">Date</th>
+                    <th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.07em;border-bottom:1px solid var(--glass-border);">Time</th>
+                    <th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.07em;border-bottom:1px solid var(--glass-border);">Status</th>
+                </tr></thead>
+                <tbody>
+                    ${history.map(h => `
+                        <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+                            <td style="padding:10px 12px;font-size:13px;color:var(--text-primary);">${h.date}</td>
+                            <td style="padding:10px 12px;font-size:13px;color:var(--text-secondary);">${h.time}</td>
+                            <td style="padding:10px 12px;"><span class="badge badge-green">${h.status}</span></td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>`;
+    } catch { document.getElementById('historyContent').innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-muted);">Failed to load history.</div>'; }
+}
+function closeHistoryModal(e) {
+    if (e.target === document.getElementById('historyModal'))
+        document.getElementById('historyModal').style.display = 'none';
+}
+
+// ── Delete ────────────────────────────────────────────────────────────────────
+async function deleteStudent(id, name) {
+    if (!confirm(`Delete ${name}? This removes all their records permanently.`)) return;
+    const r = await fetch(`/api/students/${id}`, { method: 'DELETE' });
+    const d = await r.json();
+    if (d.success) { showToast(`${name} deleted.`, 'success'); setTimeout(() => location.reload(), 700); }
+    else showToast(d.error || 'Delete failed.', 'error');
+}
+</script>
+{% endblock %}
