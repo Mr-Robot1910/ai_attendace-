@@ -362,7 +362,7 @@ def api_recognize_frame():
     session_state['last_quality_msg'] = quality_msg
 
     newly_marked = []
-    FRAMES_REQUIRED = 5  # require 5 consistent matches to prevent false positives
+    FRAMES_REQUIRED = 2  # require 2 consistent matches to prevent false positives
 
     with session_state['lock']:
         for sid in matched_ids:
@@ -438,7 +438,7 @@ def _generate_frames():
                 annotated, matched_ids, quality_msg = fm.recognize_faces_in_frame(frame, known_encs, known_ids)
                 session_state['last_quality_msg'] = quality_msg
 
-                FRAMES_REQUIRED = 5  # require 5 consistent matches
+                FRAMES_REQUIRED = 2  # require 2 consistent matches
                 for sid in matched_ids:
                     if sid not in session_state['recognized_today']:
                         session_state['pending_matches'][sid] = session_state['pending_matches'].get(sid, 0) + 1
