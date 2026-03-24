@@ -139,7 +139,7 @@ function initRegisterPage() {
     const registerBtn = document.getElementById('registerBtn');
     const cameraWrap  = document.getElementById('cameraWrap');
     const captureCountLabel = document.getElementById('captureCountLabel');
-    if (!video) return;
+    if (!video || !captureBtn) return;
 
     let capturedImages = [];
     const MAX_CAPTURES = 5;

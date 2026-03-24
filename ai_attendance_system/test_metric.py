@@ -1,30 +1,29 @@
-import cv2
+import sqlite3
 import numpy as np
+
+def cosine(a, b):
+    denom = np.linalg.norm(a) * np.linalg.norm(b)
+    if denom == 0: return 1.0
+    return 1 - np.dot(a, b) / denom
+
+db_path = "d:/first_antigravity/ai_attendance_system/attendance.db"
+conn = sqlite3.connect(db_path)
+c = conn.cursor()
+c.execute("SELECT id, name, roll_no, encoding FROM students")
+rows = c.fetchall()
+
 import pickle
-import urllib.request
-from deepface import DeepFace
 
-url = "https://upload.wikimedia.org/wikipedia/commons/a/a2/Alberto_Salazar.jpg"
-try:
-    urllib.request.urlretrieve(url, "test_stranger.jpg")
+students = []
+for row in rows:
+    if row[3]:
+        emb = pickle.loads(row[3])
+        students.append({'id': row[0], 'name': row[1], 'roll': row[2], 'emb': emb})
 
-    stranger_img = cv2.imread("test_stranger.jpg")
-    stranger_emb = np.array(DeepFace.represent(stranger_img, model_name="Facenet", detector_backend="mtcnn")[0]["embedding"])
+print(f"Loaded {len(students)} students with encodings.")
 
-    # Load student from DB directly or just load their picture
-    student_img = cv2.imread("d:/first_antigravity/ai_attendance_system/known_faces/2403031570097.jpg")
-    student_emb = np.array(DeepFace.represent(student_img, model_name="Facenet", detector_backend="mtcnn")[0]["embedding"])
-
-    euclidean_dist = np.linalg.norm(stranger_emb - student_emb)
-    cosine_dist = 1 - np.dot(stranger_emb, student_emb) / (np.linalg.norm(stranger_emb) * np.linalg.norm(student_emb))
-
-    print(f"Distance between Stranger and Student:")
-    print(f"  Euclidean: {euclidean_dist:.4f}")
-    print(f"  Cosine: {cosine_dist:.4f}")
-
-    print("\nIs it a match?")
-    print(f"  Euclidean (threshold <= 10.0): {euclidean_dist <= 10.0}")
-    print(f"  Cosine (threshold <= 0.40): {cosine_dist <= 0.40}")
-
-except Exception as e:
-    print("Error:", e)
+for i in range(len(students)):
+    print(f"--- {students[i]['name']} ({students[i]['roll']}) [norm: {np.linalg.norm(students[i]['emb']):.4f}] ---")
+    for j in range(i+1, len(students)):
+        dist = cosine(students[i]['emb'], students[j]['emb'])
+        print(f"  vs {students[j]['name']}: {dist:.4f}")

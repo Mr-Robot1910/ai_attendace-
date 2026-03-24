@@ -9,10 +9,10 @@ _deepface   = None
 _detector   = None
 
 # ─── Tunable constants ────────────────────────────────────────────────────────
-THRESHOLD         = 0.38   # Cosine distance — standard for FaceNet
+THRESHOLD         = 0.28   # Cosine distance — tight to prevent false positives between individuals
 MIN_FACE_SIZE     = 60     # px: relaxed for browser/mobile cameras
 MIN_CONFIDENCE    = 0.90   # MTCNN confidence gate (relaxed for browser JPEG)
-MAX_EYE_ANGLE_DEG = 35.0   # Slightly looser for mobile camera poses
+MAX_EYE_ANGLE_DEG = 12.0   # Strict frontal pose to ensure FaceNet accuracy without forced alignment
 
 
 # ─── Lazy loaders ─────────────────────────────────────────────────────────────

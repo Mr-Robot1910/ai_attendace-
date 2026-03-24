@@ -53,7 +53,7 @@
         <!-- Video container -->
         <div style="position:relative;border-radius:14px;overflow:hidden;background:#000;aspect-ratio:4/3;">
             <video id="videoEl" autoplay muted playsinline
-                   style="width:100%;height:100%;object-fit:cover;display:none;"></video>
+                   style="width:100%;height:100%;object-fit:cover;display:none;transform:scaleX(-1);"></video>
 
             <!-- Canvas overlay for face boxes -->
             <canvas id="overlayCanvas"
@@ -239,6 +239,8 @@ startBtn.addEventListener('click', async () => {
     sessionStatus.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="width:8px;height:8px"><circle cx="12" cy="12" r="10"/></svg> Session Active`;
     sessionStatus.className = 'badge badge-green';
     qualityBanner.textContent = 'Camera active — face recognition running';
+    
+    startBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:16px"><polyline points="20 6 9 17 4 12"/></svg> Started`;
 
     // 4. Start sending frames
     sendInterval = setInterval(sendFrame, 2200); // every 2.2s — quality over speed
@@ -269,6 +271,8 @@ stopBtn.addEventListener('click', async () => {
 // ── Send Frame ────────────────────────────────────────────────────────────────
 async function sendFrame() {
     if (!stream || !videoEl.videoWidth) return;
+    if (window.isSendingFrame) return; // Prevent overlapping API calls deadlocking the backend
+    window.isSendingFrame = true;
 
     // Capture frame from video to canvas
     captureCanvas.width  = videoEl.videoWidth;
@@ -283,6 +287,9 @@ async function sendFrame() {
             body: JSON.stringify({ image: dataUrl })
         });
         const data = await resp.json();
+
+        // If the user clicked Stop while this request was in-flight, ignore the response
+        if (!stream) return;
 
         if (!data.active) {
             setQuality(data.quality || 'No active session.', false);
@@ -315,9 +322,10 @@ async function sendFrame() {
                 }
             });
         }
-
     } catch {
         setQuality('Connection error — retrying…', false);
+    } finally {
+        window.isSendingFrame = false;
     }
 }
 
